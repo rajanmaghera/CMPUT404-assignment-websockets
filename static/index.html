@@ -1,8 +1,8 @@
 <!DOCTYPE HTML>
 <html> 
   <head> 
-    <title>Websockets Assignment</title> 
-    <meta charset="utf-8" /> 
+    <title>Websockets Assignment</title>
+    <meta charset="utf-8" />
     <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
@@ -46,7 +46,6 @@ function debug(str) {
 
 world = {};
 
-//XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
         context.beginPath();
         if (entity["type"] == "line") {
@@ -157,19 +156,19 @@ function getPosition(e) {
 function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
-    //XXX: Send a XHTML Request that updates the entity you just modified!
+    socket.send(JSON.stringify({[entity]:data}));
 }
 var counter = 0;
 function addEntityWithoutName(data) {
-    var name = "X"+(counter++)%100;
+    var name = `${browserId}-${(counter++)%100}`;
     addEntity(name,data);
 }
 
-// canvas + mouse/touch is complicated 
+// canvas + mouse/touch is complicated
 // I give you this because well the mouse/touch stuff is a total
 // pain to get right. This has some out of context bug too.
 mouse = (function() {
-    // Now this isn't the most popular way of doing OO in 
+    // Now this isn't the most popular way of doing OO in
     // Javascript, but it relies on lexical scope and I like it
     // This isn't 301 so I'm not totally bound to OO :)
     var self;    
@@ -291,18 +290,25 @@ function update() {
 
 
 function wsSetup() {
-    var url = "ws://"+host+"/subscribe";   
+    var url = "ws://"+host+"/subscribe";
     socket = new WebSocket(url);
     socket.onopen = function() {
-        //XXX: TODO What are you going to do here?
+        debug("WebSocket Opened");
+        // In our case, we don't do anything
+        // because the socket echos back the world
+        // when we connect
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
     };
-    socket.onmessage = function(msg) {  
+    socket.onmessage = function(msg) {
         try {
-            debug("WebSocket Recv:" + msg.data);
-            //XXX: TODO What are you going to do here?            
+            var data = JSON.parse(msg.data);
+            // This is bad because it's a global
+            // but it's a demo so I'm not going to
+            // worry about it
+            world = data;
+            drawNextFrame();
         } catch (e) {
             alert("socket on message: " + e);
         }
