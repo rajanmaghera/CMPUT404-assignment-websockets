@@ -24,7 +24,7 @@
   </head> 
   <body bgcolor="white" height="100%" width="100%"> 
     <div id="debug"></div>
-    <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
+    <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas>
 
     <script>
       // Fix me
@@ -33,6 +33,9 @@ var host = window.location.host;
 var context = canvas.getContext("2d");
 var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
+
+var browserId = Math.floor(Math.random() * 1000);
+
 var wscounter = 0;
 var socket;
 
@@ -40,22 +43,33 @@ function debug(str) {
     var debugDiv = document.getElementById('debug');
     debugDiv.innerHTML = "" + str;
 }
-debug("Test");
 
 world = {};
 
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
-    with(context) {
-        beginPath();                
-        lineWidth = 3;
-        var x = entity["x"];
-        var y = entity["y"];
-        //moveTo(x,y);
-        fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        context.beginPath();
+        if (entity["type"] == "line") {
+            context.lineWidth = 5;
+            var x = entity["x"];
+            var y = entity["y"];
+            var x1 = entity["x1"];
+            var y1 = entity["y1"];
+            context.fillStyle = entity["colour"];
+            context.strokeStyle = context.fillStyle;
+            context.moveTo(x,y);
+            context.lineTo(x1,y1);
+            context.stroke();
+            return;
+        } else if (entity["type"] == "point") {
+            context.lineWidth = 3;
+            var x = entity["x"];
+            var y = entity["y"];
+            context.fillStyle = entity["colour"];
+            context.strokeStyle = context.fillStyle;
+            context.arc(x, y, (entity["radius"])?entity["radius"]:5, 0, 2.0 * Math.PI, false);
+            context.fill();
+            return;
     }
 }
 
@@ -64,17 +78,36 @@ function prepEntity(entity) {
         entity["colour"] = "#FF0000";
     }
     if (!entity["radius"]) {
-        entity["radius"] = 50;
+        entity["radius"] = 5;
     }
     return entity;
 }
 
+// Sample code taken from https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images
+// Date retrieved: 2023-Mar-10
+
+const bgImg = new Image();
+var isImgLoaded = false;
+bgImg.src = "https://images.unsplash.com/photo-1629194898512-b6b8697063ac?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2262&q=80";
+bgImg.onload = function() {
+    isImgLoaded = true;
+    context.drawImage(bgImg, 0, 0,W, H);
+    renderFrame();
+}
+
 function clearFrame() {
-    with(context) {
-	moveTo(0,0);
-	fillStyle = "#000";
-	fillRect(0,0,W,H);
-    }
+	context.moveTo(0,0);
+	context.fillStyle = "#000";
+	context.fillRect(0,0,W,H);
+    if (isImgLoaded) context.drawImage(bgImg, 0, 0, W, H);
+
+    // title
+    context.save()
+    context.font = "24px Arial";
+    context.fillStyle = "#FFFFFF";
+    context.fillText("Rajan's Cool WebSocket Painting Program",20,30);
+    context.restore()
+
 
 }
 
@@ -228,21 +261,29 @@ mouse = (function() {
     return self;
 })();
 
+var previousPoint = null;
+
 // Add the application specific mouse listeners!
-//XXX: TODO Make these prettier!
+// Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    let point = {'x':x,'y':y,'colour':'white', 'type':'point'};
+    previousPoint = point;
+    addEntityWithoutName(point);
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    let point = {'x':x,'y':y,'colour':'white', 'type':'point', 'x1': previousPoint.x ?? x, 'y1': previousPoint.y ?? y};
+    previousPoint = null;
+    addEntityWithoutName(point);
+
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    let point = {'x':x,'y':y, 'x1': previousPoint.x ?? x, 'y1': previousPoint.y ?? y, 'colour':'hsl('+(counter/100)*360+',100%,50%)'
+    , 'type':'line'};
+    previousPoint = point;
+    addEntityWithoutName(point);
 });
-
 
 function update() {
     drawFrame();
